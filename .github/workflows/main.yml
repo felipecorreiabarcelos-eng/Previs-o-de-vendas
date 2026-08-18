@@ -1,0 +1,34 @@
+name: Testar Previsão de Vendas
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  rodar-sistema:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Criar pastas necessárias
+        run: mkdir -p dados graficos
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar o sistema de previsão
+        run: python main.py
+
+      - name: Guardar os gráficos gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: graficos-previsao
+          path: graficos/*.png
