@@ -1,34 +1,139 @@
-name: Testar Previsão de Vendas
+@echo off
+echo ===================================================
+echo   CRIANDO E CONFIGURANDO O PROJETO AUTOMATICAMENTE
+echo ===================================================
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+:: 1. Criando as pastas necessarias
+mkdir dados
+mkdir graficos
 
-jobs:
-  rodar-sistema:
-    runs-on: ubuntu-latest
+:: 2. Criando o arquivo main.py
+(
+echo from gerar_dados import gerar_dados_exemplo
+echo from previsao import treinar_modelo, gerar_previsao
+echo from graficos import gerar_grafico_previsao, gerar_grafico_componentes
+echo.
+echo def main^(^):
+echo     dados = gerar_dados_exemplo^(^)
+echo     print^("Amostra do historico de vendas:"^)
+echo     print^(dados.head^(^)^)
+echo     print^(f"\nTotal de registros: {len^(dados^)}"^)
+echo     modelo = treinar_modelo^(dados^)
+echo     print^("\nModelo treinado com sucesso!"^)
+echo     previsao = gerar_previsao^(modelo, dias_para_prever=90^)
+echo     print^("\nPrevisao para os proximos dias:"^)
+echo     print^(previsao[[ 'ds' , 'yhat' , 'yhat_lower' , 'yhat_upper' ]].tail^(10^)^)
+echo     gerar_grafico_previsao^(modelo, previsao^)
+echo     gerar_grafico_componentes^(modelo, previsao^)
+echo.
+echo if __name__ == "__main__" :
+echo     main^(^)
+) > main.py
 
-    steps:
-      - name: Baixar o código do repositório
-        uses: actions/checkout@v4
+:: 3. Criando o arquivo gerar_dados.py
+(
+echo import numpy as np
+echo import pandas as pd
+echo.
+echo def gerar_dados_exemplo^(^):
+echo     datas = pd.date_range^(start="2025-01-01" , end="2025-12-31" , freq="D"^)
+echo     np.random.seed^(42^)
+echo     tendencia = np.linspace^(100, 300, len^(datas^)^)
+echo     sazonalidade = 20 * np.sin^(np.linspace^(0, 12 * np.pi, len^(datas^)^)^)
+echo     ruido = np.random.normal^(0, 10, len^(datas^)^)
+echo     vendas = tendencia + sazonalidade + ruido
+echo     vendas = vendas.clip^(min=0^)
+echo     df = pd.DataFrame^({"ds" : datas, "y" : vendas}^)
+echo     return df
+) > gerar_dados.py
 
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+:: 4. Criando o arquivo previsao.py
+(
+echo from prophet import Prophet
+echo.
+echo def treinar_modelo^(dados^):
+echo     modelo = Prophet^(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False^)
+echo     modelo.fit^(dados^)
+echo     return modelo
+echo.
+echo def gerar_previsao^(modelo, dias_para_prever=90^):
+echo     futuro = modelo.make_future_dataframe^(periods=dias_para_prever^)
+echo     previsao = modelo.predict^(futuro^)
+echo     return previsao
+) > previsao.py
 
-      - name: Criar pastas necessárias
-        run: mkdir -p dados graficos
+:: 5. Criando o arquivo graficos.py
+(
+echo import matplotlib.pyplot as plt
+echo.
+echo def gerar_grafico_previsao^(modelo, previsao, caminho="graficos/previsao_vendas.png"^):
+echo     fig = modelo.plot^(previsao^)
+echo     plt.title^("Previsao de Vendas - Proximos 90 dias"^)
+echo     plt.xlabel^("Data"^)
+echo     plt.ylabel^("Vendas"^)
+echo     plt.tight_layout^(^)
+echo     plt.savefig^(caminho^)
+echo     print^(f"Grafico salvo em {caminho}"^)
+echo.
+echo def gerar_grafico_componentes^(modelo, previsao, caminho="graficos/componentes_previsao.png"^):
+echo     fig = modelo.plot_components^(previsao^)
+echo     plt.tight_layout^(^)
+echo     plt.savefig^(caminho^)
+echo     print^(f"Grafico salvo em {caminho}"^)
+) > graficos.py
 
-      - name: Instalar dependências
-        run: pip install -r requirements.txt
+:: 6. Criando o arquivo requirements.txt
+(
+echo pandas
+echo prophet
+echo matplotlib
+echo numpy
+) > requirements.txt
 
-      - name: Rodar o sistema de previsão
-        run: python main.py
+:: 7. Criando o arquivo .gitignore
+(
+echo __pycache__/
+echo *.pyc
+echo .venv/
+echo venv/
+echo .DS_Store
+echo graficos/*.png
+) > .gitignore
 
-      - name: Guardar os gráficos gerados
-        uses: actions/upload-artifact@v4
-        with:
-          name: graficos-previsao
-          path: graficos/*.png
+:: 8. Criando o arquivo README.md
+(
+echo # Previsao de Vendas
+echo Trabalho da faculdade Estacio — Ciencia da Computacao, 3o periodo.
+) > README.md
+
+echo ===================================================
+echo   ARQUIVOS CRIADOS! INSTALANDO O PYTHON E PROPHET...
+echo ===================================================
+
+:: 9. Criando ambiente virtual e instalando tudo
+python -m venv .venv
+call .venv\Scripts\activate.bat
+pip install -r requirements.txt
+
+echo ===================================================
+echo   RODANDO O PROJETO...
+echo ===================================================
+python main.py
+
+echo ===================================================
+echo   SUBINDO TUDO PARA O GITHUB...
+echo ===================================================
+:: Troque o link abaixo pelo link real do seu repositorio do GitHub!
+set /p LINK_GITHUB="Cole o link HTTPS do seu repositorio do GitHub e aperte Enter: "
+
+git init
+git add .
+git commit -m "Trabalho Estacio completo por script"
+git branch -M main
+git remote add origin %LINK_GITHUB%
+git push -u origin main
+
+echo ===================================================
+echo   TUDO PRONTO E NO GITHUB! SUCESSO!
+echo ===================================================
+pause
